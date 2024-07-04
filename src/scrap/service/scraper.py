@@ -16,7 +16,7 @@ class Scraper(ABC):
         self.selector = selector
         
     
-    def parse_search_results(self, url: str, selector: str):
+    def parse_search(self, url: str, selector: str) -> BeautifulSoup:
         try:
             with sync_playwright() as pw:
                 browser = pw.chromium.launch(headless=True)
@@ -33,7 +33,7 @@ class Scraper(ABC):
             raise
     
     @abstractmethod
-    def extract_links(self, html) -> list:
+    def extract_links(self, html: BeautifulSoup) -> list[str]:
         pass
     
     @abstractmethod
@@ -41,27 +41,27 @@ class Scraper(ABC):
         pass 
     
     @abstractmethod
-    def fetch_image_details(self, link: str, result: None, index: int):
+    def fetch_image_details(self, link: str):
         pass
 
 
     def fetch_all_images(self, links: list):
         try:
-            num_threads = int(os.getenv('NUMBER_THREADS', 4))  # Default to 4 if not defined
-            all_img = list()
+            num_threads = int(os.getenv('NUMBER_THREADS', 4))  
+            all_images = list()
 
             with ThreadPoolExecutor(max_workers=num_threads) as executor:
-                future_to_link = {executor.submit(self.fetch_image_info, link): link for link in links}
+                future_to_link = {executor.submit(self.fetch_image_details, link): link for link in links}
                 for future in as_completed(future_to_link):
                     link = future_to_link[future]
                     try:
                         result = future.result()
                         if result:
-                            all_img.append(result)
+                            all_images.append(result)
                     except Exception as e:
                         logger.error(f"Error processing {link}: {e}")
             
-            return all_img
+            return all_images
         
         except Exception as e:
             logger.error(f"Error in fetch_all_images: {e}")

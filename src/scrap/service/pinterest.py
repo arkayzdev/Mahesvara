@@ -41,16 +41,6 @@ class PinterestScraper(Scraper):
     
 
     def get_img_details(self, link: str, result: None, index: int) -> Scrap:
-        """Get all informations needed for images
-
-        Args:
-            link (str): _description_
-            result (None): _description_
-            index (int): _description_
-
-        Returns:
-            Image: _description_
-        """
         html = self.page_parser(link)
         img_src = self.get_img_src(html)
         author = self.get_user_tag(html)
