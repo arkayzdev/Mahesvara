@@ -1,37 +1,46 @@
-from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from api.scrap.service.scraper import Scraper
-from model import Scrap
-import queue
-import threading
+from scraper import ImageScraper
+from model import Image
+from tools.logger import logger
+from typing import List, Dict, Any
 
-class PinterestScraper(Scraper):
+
+class PinterestImageScraper(ImageScraper):
     
     def __init__(self) -> None:
-        self.website = "pinterest"
-        self.search_url = "search/pins/?q="
-        self.search_url_next = None
-        self.selector = "[data-test-id=pin-closeup-image]"
+        website = "pinterest"
+        search_url = "search/pins/?q="
+        selector = "[data-test-id=pin-closeup-image]"
+        try:
+            super().__init__(website, search_url, selector)
+        except Exception as e:
+            logger.error(f"Error initializing PinterestScraper: {e}")
+            raise
 
 
-    def get_links(self, html):
-        links = []
-        div_links = html.select('a[href^="/pin/"]') 
-        pins = [div_link.get('href') for div_link in div_links]
-        links = [pin for pin in pins if not pin in links]
-        img_links = [f"https://pinterest.com{link}" for link in links]
-        
-        return img_links
+    def extract_links(self, html: BeautifulSoup) -> List[str]:
+        try:
+            links = []
+            div_links = html.select('a[href^="/pin/"]') 
+            pins = [div_link.get('href') for div_link in div_links]
+            links = [pin for pin in pins if not pin in links]
+            img_links = [f"https://pinterest.com{link}" for link in links]
+            
+            return img_links
+        except Exception as e:
+            logger.error(f"Error extracting Pinterest links: {e}")
+            raise
+
     
 
-    def get_img_src(self, html):
+    def extract_img_source(self, html):
         image_src = html.select_one('a[href^="https://d2w9rnfcy7mm78.cloudfront.net/"]').get('href')
         title = html.select_one('img').get('title')
         
         return {'source': image_src, 'title': title}  
     
 
-    def get_user_tag(self, html) -> str:
+    def extract_img_author(self, html) -> str:
         creator_div = html.find('div', attrs={"data-test-id": "official-user-attribution"})
         if creator_div:
             user_tag = f"@{creator_div.a['href'].replace('/', '')}"
@@ -40,14 +49,13 @@ class PinterestScraper(Scraper):
         return user_tag
     
 
-    def get_img_details(self, link: str, result: None, index: int) -> Scrap:
+    def fetch_img_details(self, link: str) -> Image:
         html = self.page_parser(link)
-        img_src = self.get_img_src(html)
-        author = self.get_user_tag(html)
-        img_format = img_src['source'].split(".")[-1]
+        img_source = self.extract_img_source(html)
+        author = self.extract_img_author(html)
+        img_format = img_source['source'].split(".")[-1]
         if '?' in img_format:
             img_format = img_format.split("?")[0]
-        image = Scrap('None', link, img_src['source'], 'Pinterest', author, img_src['alt'], img_format)
+        image = Image('None', link, img_source['source'], 'Pinterest', author, img_source['alt'], img_format)
         
-        result[index] = image
         return image

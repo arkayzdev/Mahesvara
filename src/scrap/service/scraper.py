@@ -3,11 +3,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 import os
 from abc import ABC, abstractmethod
+from typing import List, Dict, Any
 from tools.logger import logger
 
 
-
-class Scraper(ABC):
+class ImageScraper(ABC):
     @abstractmethod
     def __init__(self, website: str, search_url: str, search_url_extra: str, selector: str ) -> None:
         self.website = website
@@ -33,22 +33,22 @@ class Scraper(ABC):
             raise
     
     @abstractmethod
-    def extract_links(self, html: BeautifulSoup) -> list[str]:
+    def extract_links(self, html: BeautifulSoup) -> List[str]:
         pass
     
     @abstractmethod
-    def extract_img_source(self, html) -> dict:
+    def extract_img_source(self, html: BeautifulSoup) -> dict:
         pass 
     
     @abstractmethod
-    def fetch_image_details(self, link: str):
+    def fetch_img_details(self, link: str):
         pass
 
 
     def fetch_all_images(self, links: list):
         try:
-            num_threads = int(os.getenv('NUMBER_THREADS', 4))  
-            all_images = list()
+            num_threads = int(os.getenv('NUMBER_THREAD', 4))  
+            all_images = []
 
             with ThreadPoolExecutor(max_workers=num_threads) as executor:
                 future_to_link = {executor.submit(self.fetch_image_details, link): link for link in links}
@@ -64,5 +64,5 @@ class Scraper(ABC):
             return all_images
         
         except Exception as e:
-            logger.error(f"Error in fetch_all_images: {e}")
+            logger.error(f"Error while fetching all images: {e}")
             raise
