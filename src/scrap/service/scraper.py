@@ -1,10 +1,14 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from tools.logger import logger
+
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class ImageScraper(ABC):
@@ -30,7 +34,9 @@ class ImageScraper(ABC):
             return html
         except Exception as e:
             logger.error(f"Error parsing page {url}: {e}")
-            raise
+
+        
+
     
     @abstractmethod
     def extract_links(self, html: BeautifulSoup) -> List[str]:
@@ -46,23 +52,23 @@ class ImageScraper(ABC):
 
 
     def fetch_all_images(self, links: list):
-        try:
-            num_threads = int(os.getenv('NUMBER_THREAD', 4))  
-            all_images = []
+        max_threads = int(os.getenv('MAX_THREAD', 4))  
+        all_images = []
 
-            with ThreadPoolExecutor(max_workers=num_threads) as executor:
-                future_to_link = {executor.submit(self.fetch_image_details, link): link for link in links}
-                for future in as_completed(future_to_link):
-                    link = future_to_link[future]
-                    try:
-                        result = future.result()
-                        if result:
-                            all_images.append(result)
-                    except Exception as e:
-                        logger.error(f"Error processing {link}: {e}")
-            
-            return all_images
+        with ThreadPoolExecutor(max_workers=max_threads) as executor:
+            future_to_link = {executor.submit(self.fetch_img_details, link): link for link in links}
+            for future in as_completed(future_to_link):
+                link = future_to_link[future]
+                try:
+                    result = future.result()
+                    if result:
+                        all_images.append(result)
+                except Exception as e:
+                    logger.error(f"Error processing {link}: {e}")
         
-        except Exception as e:
-            logger.error(f"Error while fetching all images: {e}")
-            raise
+        return all_images
+        
+       
+           
+
+

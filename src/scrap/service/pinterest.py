@@ -1,18 +1,22 @@
 from bs4 import BeautifulSoup
 from scraper import ImageScraper
 from model import Image
-from tools.logger import logger
 from typing import List, Dict, Any
+import logging
+from datetime import datetime
+from playwright.sync_api import TimeoutError 
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class PinterestImageScraper(ImageScraper):
     
     def __init__(self) -> None:
         website = "pinterest"
         search_url = "search/pins/?q="
-        selector = "[data-test-id=pin-closeup-image]"
+        selector = f'[data-test-id=pin-closeup-image]'
         try:
-            super().__init__(website, search_url, selector)
+            super().__init__(website, search_url, None, selector)
         except Exception as e:
             logger.error(f"Error initializing PinterestScraper: {e}")
             raise
@@ -34,28 +38,54 @@ class PinterestImageScraper(ImageScraper):
     
 
     def extract_img_source(self, html):
-        image_src = html.select_one('a[href^="https://d2w9rnfcy7mm78.cloudfront.net/"]').get('href')
-        title = html.select_one('img').get('title')
-        
-        return {'source': image_src, 'title': title}  
+        try:
+            image_div = html.find('div', attrs={"data-test-id": "pin-closeup-image"})
+            image_src = image_div.img.get('src')
+            alt = image_div.img.get('alt')
+
+            for pattern in ['/236x/', '/564x/']:
+                image_src.replace(pattern, '/736x/')
+            return {'source': image_src, 'alt': alt}  
+        except Exception as e:
+            logger.error(f"Error extracting image source: {e}")
+            raise
+
     
 
     def extract_img_author(self, html) -> str:
-        creator_div = html.find('div', attrs={"data-test-id": "official-user-attribution"})
-        if creator_div:
-            user_tag = f"@{creator_div.a['href'].replace('/', '')}"
-        else:
-            user_tag = "None"
-        return user_tag
+        try:
+            creator_div = html.find('div', attrs={"data-test-id": "official-user-attribution"})
+            if creator_div:
+                user_tag = f"@{creator_div.a['href'].replace('/', '')}"
+            else:
+                user_tag = "None"
+            return user_tag
+        except Exception as e:
+            logger.error(f"Error extracting image author: {e}")
+            raise
     
 
     def fetch_img_details(self, link: str) -> Image:
-        html = self.page_parser(link)
-        img_source = self.extract_img_source(html)
-        author = self.extract_img_author(html)
-        img_format = img_source['source'].split(".")[-1]
-        if '?' in img_format:
-            img_format = img_format.split("?")[0]
-        image = Image('None', link, img_source['source'], 'Pinterest', author, img_source['alt'], img_format)
-        
-        return image
+        try:
+            html = self.parse_search(link, self.selector)
+            img_source = self.extract_img_source(html)
+            author = self.extract_img_author(html)
+            img_format = img_source['source'].split(".")[-1]
+            if '?' in img_format:
+                img_format = img_format.split("?")[0]
+            image = Image('None', link, img_source['source'], 'Pinterest', author, img_source['alt'], img_format, datetime.today().strftime('%Y-%m-%d %H:%M:%S'))
+            
+            return image
+        except Exception as e:
+            logger.error(f"Error fetching image details {link}: {e}")
+            raise
+
+    
+
+if __name__ == "__main__":
+    pin_scraper = PinterestImageScraper()
+    research_page = pin_scraper.parse_search("https://pinterest.com/search/pins/?q=gojo", "img")
+    links = pin_scraper.extract_links(research_page)
+    # print(links)
+    imgs = pin_scraper.fetch_all_images(links)
+    print(imgs)

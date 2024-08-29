@@ -1,0 +1,3 @@
+class ExtractLinksException(Exception):
+    pass
+
