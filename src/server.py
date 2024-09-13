@@ -2,26 +2,20 @@ from typing import Union
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-
+from scrap.service.pinterest import PinterestImageScraper
 app = FastAPI()
 
-
-class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: Union[bool, None] = None
-
-
 @app.get("/")
-def read_root():
+async def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
 
-
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}
+@app.get("/images/{search}")
+async def get_images(search: str) :
+    pin_scraper = PinterestImageScraper()
+    research_page = await pin_scraper.parse_search(f"https://pinterest.com/search/pins/?q={search}", "img")
+    links = pin_scraper.extract_links(research_page)
+    imgs = await pin_scraper.fetch_all_images(links)
+    print(imgs)
+    return {"images": imgs}
