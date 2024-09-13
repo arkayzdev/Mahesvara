@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from api.scrap.service.scraper import Scraper
+from scraper import Scraper
 import queue
 import threading
 

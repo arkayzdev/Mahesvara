@@ -5,7 +5,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 import logging
-from model import Image
+from scrap.model import Image
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

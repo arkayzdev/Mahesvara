@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from scrap.service.scraper import ImageScraper
-from scrap.service.model import Image
+from scrap.model import Image
 from typing import List, Dict, Any
 import logging
 from datetime import datetime
